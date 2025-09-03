@@ -1,0 +1,43 @@
+name: 自动生成 WARP 节点
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v3
+
+      - name: 安装 warp.sh
+        run: |
+          curl -fsSL https://git.io/warp.sh -o warp.sh
+          chmod +x warp.sh
+
+      - name: 注册 WARP 节点（可选指定国家）
+        run: |
+          TARGET_COUNTRY="US"   # 可改为目标国家代码，例如 JP、DE
+          ./warp.sh register --country $TARGET_COUNTRY
+          ./warp.sh enable-always-on
+          ./warp.sh wg > warp.conf
+
+      - name: 生成 v2rayN 节点网页
+        run: |
+          WG_CONF=$(cat warp.conf | base64 -w0)
+          echo "<!DOCTYPE html>
+<html>
+<head><title>v2rayN WARP 节点</title></head>
+<body>
+<h2>v2rayN WireGuard 节点</h2>
+<p>节点尽量出口 IP 位于目标国家</p>
+<pre>wireguard://$WG_CONF</pre>
+</body>
+</html>" > index.html
+
+      - name: 发布到 GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: .
